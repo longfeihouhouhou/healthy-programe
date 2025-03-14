@@ -1,0 +1,223 @@
+<!-- DashboardView.vue -->
+<template>
+  <div class="dashboard-container">
+    <!-- 今日打卡 -->
+    <div class="card">
+      <h3>今日打卡</h3>
+      <van-grid :column-num="3">
+        <van-grid-item icon="like-o" text="运动" @click="toggleExercise" :class="{ active: exerciseChecked }" />
+        <van-grid-item icon="food-o" text="饮食" @click="toggleDiet" :class="{ active: dietChecked }" />
+        <van-grid-item icon="balance-o" text="体重" @click="toggleWeight" :class="{ active: weightChecked }" />
+      </van-grid>
+    </div>
+
+    <!-- 数据统计 -->
+    <div class="card">
+      <h3>本周数据</h3>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="label">运动天数</span>
+          <span class="value">{{ weeklyStats.exercise }}/7</span>
+        </div>
+        <div class="stat-item">
+          <span class="label">饮食达标</span>
+          <span class="value">{{ weeklyStats.diet }}/7</span>
+        </div>
+        <div class="stat-item">
+          <span class="label">平均体重</span>
+          <span class="value">{{ weeklyStats.avgWeight }}kg</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 打卡排行 -->
+    <div class="card">
+      <h3>好友排行</h3>
+      <van-cell-group inset>
+        <van-cell v-for="(user, index) in leaderboard" :key="user.id"
+          :title="user.name"
+          :label="'连续打卡 ' + user.streak + ' 天'"
+          :value="'第 ' + (index + 1) + ' 名'"
+        >
+          <template #icon>
+            <van-image
+              round
+              width="40"
+              height="40"
+              :src="user.avatar"
+              style="margin-right: 8px"
+            />
+          </template>
+        </van-cell>
+      </van-cell-group>
+    </div>
+  </div>
+
+  <!-- 体重输入弹窗 -->
+  <van-dialog v-model:show="showWeightDialog"
+    title="记录体重"
+    show-cancel-button
+    @confirm="saveWeight"
+  >
+    <van-field
+      v-model="currentWeight"
+      type="number"
+      label="体重"
+      placeholder="请输入体重(kg)"
+    />
+  </van-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted } from 'vue'
+import { 
+  showToast, 
+  showSuccessToast,
+  Dialog, 
+  Grid, 
+  GridItem, 
+  Cell, 
+  CellGroup, 
+  Image as VanImage,
+  Icon,
+  Tag,
+  Circle,
+  Row,
+  Col,
+  Button
+} from 'vant'
+import * as echarts from 'echarts'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+const username = ref(userStore.user?.username || '用户')
+const level = ref(3)
+const streak = ref(12)
+const healthChart = ref<HTMLElement | null>(null)
+
+const exerciseChecked = ref(false)
+const dietChecked = ref(false)
+const weightChecked = ref(false)
+const showWeightDialog = ref(false)
+const currentWeight = ref('')
+const weightTrend = ref(-0.5)
+
+const allChecked = computed(() => {
+  return exerciseChecked.value && dietChecked.value && weightChecked.value
+})
+
+const weeklyStats = reactive({
+  exercise: 5,
+  diet: 4,
+  avgWeight: 65.5
+})
+
+const leaderboard = ref([
+  {
+    id: 1,
+    name: '张三',
+    streak: 7,
+    avatar: 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'
+  },
+  {
+    id: 2,
+    name: '李四',
+    streak: 5,
+    avatar: 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'
+  },
+  {
+    id: 3,
+    name: '王五',
+    streak: 3,
+    avatar: 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'
+  }
+])
+
+const toggleExercise = () => {
+  exerciseChecked.value = !exerciseChecked.value
+  if (exerciseChecked.value) {
+    showToast('运动打卡成功！')
+  }
+}
+
+const toggleDiet = () => {
+  dietChecked.value = !dietChecked.value
+  if (dietChecked.value) {
+    showToast('饮食打卡成功！')
+  }
+}
+
+const toggleWeight = () => {
+  weightChecked.value = !weightChecked.value
+  if (weightChecked.value) {
+    showToast('体重打卡成功！')
+  }
+}
+
+const showWeightInput = () => {
+  showWeightDialog.value = true
+}
+
+const saveWeight = () => {
+  if (currentWeight.value) {
+    showToast('体重记录成功！')
+    currentWeight.value = ''
+  }
+}
+</script>
+
+<style scoped>
+.dashboard-container {
+  padding: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card h3 {
+  margin: 0 0 16px;
+  color: #323233;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-item .label {
+  display: block;
+  font-size: 14px;
+  color: #969799;
+}
+
+.stat-item .value {
+  display: block;
+  font-size: 20px;
+  font-weight: bold;
+  color: #323233;
+  margin-top: 4px;
+}
+
+:deep(.van-grid-item) {
+  position: relative;
+  overflow: hidden;
+}
+
+:deep(.van-grid-item).active {
+  color: var(--van-primary-color);
+}
+
+:deep(.van-grid-item).active .van-grid-item__icon {
+  color: var(--van-primary-color);
+}
+</style>
